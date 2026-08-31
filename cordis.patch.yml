@@ -1,0 +1,32 @@
+# dsh-credit-meter bundle patch: inserts the plugin row over the composed
+# profile. The row enables the plugin and pre-seeds the defaults of the
+# "credit-meter" settings namespace (budget, currency, prices...) that the web
+# client reads and writes; values already saved in the profile's settings
+# document take precedence. Config is validated at plugin load.
+#
+# Edit this file (or the profile's own cordis.patch.yml, which outranks it) to
+# change defaults, then restart the profile process.
+#
+# PATCH IDS: patch rows target the entry's composed id (options.id —
+# "dsh-credit-meter"), NOT the loader's namespaced runtime id
+# ("include:dsh-credit-meter"). Writing the namespaced id matches nothing and
+# is silently skipped (warn: "patch: entry not found").
+
+- insert:
+    - id: dsh-credit-meter
+      name: dsh-credit-meter
+      config:
+        enabled: true
+        budget: 10
+        currency: USD
+        offPeakEnabled: true
+        balanceIntervalSec: 60
+        priceInputPeakPerM: 0.44
+        priceCacheReadPeakPerM: 0.014
+        priceCacheWritePeakPerM: 0
+        priceOutputPeakPerM: 1.32
+
+# To disable this row from the profile's own cordis.patch.yml, target the
+# composed id, not the namespaced runtime id:
+# - id: dsh-credit-meter
+#   disabled: true
