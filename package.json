@@ -1,6 +1,6 @@
 {
   "name": "dsh-credit-meter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DSH plugin (web): real DeepSeek account balance in the sidebar plus an estimated credit spend per session (provider tokens × configurable prices).",
   "type": "module",
   "main": "lib/index.js",
@@ -38,8 +38,10 @@
       ]
     }
   },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "~3.18.4"
+  },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.1-rc.2"
+    "@deepseek-ai/cordis": "~4.0.4"
   }
 }

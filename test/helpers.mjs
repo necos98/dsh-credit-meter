@@ -3,41 +3,76 @@
 // Zero dependencies: node:test (built-in) runs the tests; this file provides
 // the plugin-specific pieces:
 //   - createFakeCtx: a fake Cordis ctx that records what apply() registers
-//     (settings namespaces, webServer routes, lifecycle hooks, effects) so
-//     tests can assert on the registrations without booting DSH.
-//   - createFakeSettingsScope: fake settings scope with getSnapshot/subscribe/
-//     set (set resolves, like the real one).
-//   - createFakeClientCtx / loadClientModule: fake client services and the
-//     window.__ModuleLoader__ shim for the browser half.
+//     (webServer routes, lifecycle hooks, effects) so tests can assert on the
+//     registrations without booting DSH.
+//   - createFakeClientCtx / loadClientModule: fake client services (including
+//     the `configForms` settings service) and the window.__ModuleLoader__ shim
+//     for the browser half.
 
 import fs from "node:fs";
 import vm from "node:vm";
 
 /** Minimal react stub: getSnapshot() is honored so rendered components see
- *  the real scope/balance-store state. Tests assert registrations and inspect
- *  the recorded element tree ({ __element: [type, props, ...children] }). */
+ *  the real config-form/balance-store state. Tests assert registrations and
+ *  inspect the recorded element tree ({ __element: [type, props, ...children] }). */
 const reactStub = {
   createElement: (...args) => ({ __element: args }),
   useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot(),
 };
 
-/** Fake settingsScope: bind() returns a scope with getSnapshot/subscribe/set. */
-export function createFakeSettingsScope(initial = {}) {
-  const state = { value: { ...initial } };
+/**
+ * Fake `configForms` service: `get(entryId)` returns a ConfigForm whose
+ * snapshot mirrors the real `ConfigFormSnapshot` (status/value/base/user/
+ * revision/writable/mode), so a test reading more than `.value` cannot pass
+ * against a shape production does not have.
+ *
+ * `get` records every requested entry id in `.requested`, so a test can assert
+ * that the client asks for the id the patch row actually composes — a drift
+ * there would otherwise leave every test green while Settings silently served
+ * defaults.
+ * @param initial - the resolved section to start from.
+ */
+export function createFakeConfigForms(initial = {}) {
+  let value = { ...initial };
   const listeners = new Set();
-  return {
-    bind() {
-      return this;
-    },
-    getSnapshot: () => state,
+  const state = () => ({
+    status: "ready",
+    value,
+    base: undefined,
+    user: value,
+    revision: 1,
+    writable: true,
+    mode: "host",
+  });
+  const form = {
+    getSnapshot: state,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    set(field, value) {
-      state.value = { ...state.value, [field]: value };
+    set(field, next) {
+      value = { ...value, [field]: next };
       for (const listener of [...listeners]) listener();
-      return Promise.resolve();
+      return Promise.resolve(true);
+    },
+    unset(field) {
+      const next = { ...value };
+      delete next[field];
+      value = next;
+      for (const listener of [...listeners]) listener();
+      return Promise.resolve(true);
+    },
+    mutate() {
+      return Promise.resolve(true);
+    },
+  };
+  const requested = [];
+  return {
+    form,
+    requested,
+    get(entryId) {
+      requested.push(entryId);
+      return form;
     },
   };
 }
@@ -51,16 +86,10 @@ export function createFakeSettingsScope(initial = {}) {
  */
 export function createFakeCtx(services = {}) {
   const ctx = {
-    namespaces: [],
     routes: [],
     lifecycle: {},
     effects: [],
     services: { ...services },
-    settings: {
-      register: (ns, schema) => {
-        ctx.namespaces.push({ ns, schema });
-      },
-    },
     webServer: {
       register: (spec) => {
         ctx.routes.push(spec);
@@ -91,12 +120,13 @@ export function createFakeCtx(services = {}) {
 }
 
 /**
- * Fake client ctx for the browser half: settingsScope always mounted,
+ * Fake client ctx for the browser half: the `configForms` settings service is
+ * always mounted (read it back through `ctx.configForms.form`),
  * locale/slots mounted by default (pass false to test the graceful skip).
  */
 export function createFakeClientCtx({ settings = {}, locale = true, slots = true } = {}) {
   const ctx = {
-    settingsScope: createFakeSettingsScope(settings),
+    configForms: createFakeConfigForms(settings),
     dictionaries: [],
     slotRegistrations: [],
     effects: [],
