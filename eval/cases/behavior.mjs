@@ -20,8 +20,8 @@ export const cases = [
   {
     name: "settings namespace is the entry id and exposes a live form",
     run(t) {
-      // DSH 0.1.7-rc.2 keys the settings document by the profile entry id, and
-      // only volatile Config fields become the entry's settings form. The old
+      // The settings namespace is derived from the entry id, and only volatile
+      // Config fields become the entry's settings form. The old
       // `ctx.settings.register(ns, schema)` host call no longer exists, so this
       // case asserts the schema contract the browser half depends on instead.
       t.assert.equal(SETTINGS_NS, "dsh-credit-meter");
