@@ -1,6 +1,6 @@
 # Plugin surfaces cheat sheet
 
-Grounded against the SDK installed with **DSH 0.1.1-rc.2**. Copy the snippet
+Grounded against the SDK installed with **DSH 0.1.7-rc.2**. Copy the snippet
 you need into `lib/index.js` (host) or `lib/client.js` (browser half).
 
 ## Host: custom tool (`ctx.tools` + `defineTool`)
@@ -50,20 +50,63 @@ ctx.inject(["webServer"], (serverCtx) => {
 
 ## Host: settings namespace (shared config)
 
-The host owns the schema; the browser half reads/writes it via
-`settingsScope`. Schema is a callable with `toJSON` (no schemastery import).
+Since **DSH 0.1.7-rc.2** no plugin registers a settings namespace itself. The
+harness derives one namespace per live loader entry, **keyed by the entry id**
+(`entry.options.id` — the `id` in `cordis.patch.yml`, e.g. `my-plugin`) and
+**built only from the volatile fields of the entry's `Config` schema**. A
+`Config` with no `.volatile()` field yields no form, so the browser half finds
+no namespace and a plugin that injects the old `settingsScope` service stays
+`pending` forever.
+
+Host half (`lib/index.js`) — declare the schema, and keep the values narrow
+because a hand-edited settings document is user input:
 
 ```js
-function mySchema(section) {
-  const v = section ?? {};
-  return { enabled: typeof v.enabled === "boolean" ? v.enabled : true };
-}
-mySchema.toJSON = () => ({ type: "object", dict: {} });
+import z from "@deepseek-ai/schemastery";
 
-ctx.inject(["settings"], (settingsCtx) => {
-  settingsCtx.settings.register("my-plugin", mySchema);
+export const Config = z.object({
+  // .default() makes the field present for a fresh install; .volatile() is what
+  // puts the field in the settings form and allows a single-field write.
+  enabled: z.boolean().default(true).volatile(),
+  intervalSec: z.number().min(5).max(3600).default(60).volatile(),
 });
 ```
+
+Browser half (`lib/client.js`) — `configForms` is the settings domain's service;
+it owns the Host describe mirror and the per-entry write queue:
+
+```js
+const inject = ["slots", "locale", "configForms"];
+
+function apply(ctx) {
+  // Keyed by the entry id, NOT by a namespace you invented.
+  const form = ctx.configForms.get("my-plugin");
+  const sync = () => readConfig(form.getSnapshot());
+  sync();
+  ctx.effect(() => form.subscribe(sync), "my-plugin: settings sync");
+  // Writes: form.set(field, value) resolves to true/false (Host acceptance).
+}
+```
+
+Notes:
+
+- `form.getSnapshot()` returns a `ConfigFormSnapshot`: `status`
+  (`loading`/`ready`/`unavailable`), `value` (the resolved section, `undefined`
+  until the first acceptance), `base`, `user`, `revision`, `writable`, `mode`.
+  Treat `value === undefined` as "use the built-in defaults".
+- A resolved `.volatile()` field is a cosmokit **reference**, not the value: it
+  reads back as an object with a `get()` method and the
+  `Symbol.for("cosmokit.volatile.write")` key. Unwrap before type-checking —
+  call `value.get()` (recursively for a whole section), or compare with
+  `isVolatile(value)` from `@deepseek-ai/cosmokit`.
+- `ctx.configForms.describe()` is the cross-namespace read face;
+  `ctx.configForms.whileServed([ns], register)` keeps a registration alive only
+  while the Host actually serves that namespace.
+- `ctx.settings` on the **host** still exists, but only for schema-derived
+  forms and instance policy (`describe`/`update`/`replace`/`mutate`/
+  `configure`/`prepareDocument`). It has no `register(ns, schema)`.
+- Add `@deepseek-ai/dsh-client-ui-settings` to `dsh.client.inject` so the
+  `configForms` provider is mounted in the web bundle.
 
 ## Host ↔ browser: RPC channel (action surface)
 
@@ -149,7 +192,7 @@ Browser half (`lib/client.js`):
 ```
 
 ```js
-// inject: ["slots", "locale", "settingsScope", "connection"]
+// inject: ["slots", "locale", "configForms", "connection"]
 const connection = ctx.get("connection");
 const result = await connection.rpc.call("/my-plugin-actions", "install", { name: "x" });
 if (result.ok) {

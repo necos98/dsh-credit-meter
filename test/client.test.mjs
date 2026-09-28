@@ -142,7 +142,7 @@ function findSelect(node, pred) {
 test("client module loads and exposes the plugin contract", () => {
   assert.ok(client, "module should be registered under dsh-credit-meter");
   assert.equal(typeof client.apply, "function");
-  assert.deepEqual([...client.inject].sort(), ["locale", "settingsScope", "slots"].sort());
+  assert.deepEqual([...client.inject].sort(), ["configForms", "locale", "slots"].sort());
   assert.ok(I, "exports.internals present (for the tests)");
   assert.ok(I.DEFAULT_CONFIG && I.balanceStore && typeof I.tokenCost === "function");
 });
@@ -351,7 +351,7 @@ test("footer renders the remaining credit estimate and the real balance", () => 
   const ctx = createFakeClientCtx({ settings: { enabled: true, budget: 10, offPeakEnabled: false } });
   client.apply(ctx);
   const comp = slotComponent(ctx, "sidebar.footer.action");
-  const props = { scope: ctx.settingsScope, useSessions: (sel) => sel(listState), t: (k) => k };
+  const props = { scope: ctx.configForms.form, useSessions: (sel) => sel(listState), t: (k) => k };
   // no real balance (ok:false) -> estimate: budget 10 - used 3.08 = $6.92
   const wide = comp({ wide: true, ...props });
   assert.ok(findText(wide, (txt) => txt === "$6.92"), "wide shows the estimate remaining");
@@ -373,7 +373,7 @@ test("footer returns null when disabled", () => {
   const ctx = createFakeClientCtx({ settings: { enabled: false } });
   client.apply(ctx);
   const comp = slotComponent(ctx, "sidebar.footer.action");
-  assert.equal(comp({ wide: true, scope: ctx.settingsScope, useSessions: (sel) => sel(listState), t: (k) => k }), null);
+  assert.equal(comp({ wide: true, scope: ctx.configForms.form, useSessions: (sel) => sel(listState), t: (k) => k }), null);
 });
 
 test("session header badge shows the estimated session cost", () => {
@@ -383,12 +383,12 @@ test("session header badge shows the estimated session cost", () => {
   const rendered = comp({
     sessionId: "s1",
     useProjection: () => ({ uncachedInputTokens: 1e6, outputTokens: 1e6, cacheReadTokens: 0, cacheWriteTokens: 0 }),
-    scope: ctx.settingsScope,
+    scope: ctx.configForms.form,
     t: (k) => k,
   });
   assert.ok(findText(rendered, (txt) => txt === "$1.76"), "badge shows the session cost");
   assert.equal(
-    comp({ sessionId: "s1", useProjection: () => undefined, scope: ctx.settingsScope, t: (k) => k }),
+    comp({ sessionId: "s1", useProjection: () => undefined, scope: ctx.configForms.form, t: (k) => k }),
     null,
     "no badge without usage"
   );
@@ -400,7 +400,7 @@ test("credits section lists sessions and edits settings", async () => {
   });
   client.apply(ctx);
   const comp = slotComponent(ctx, "settings.section");
-  const rendered = comp({ close() {}, scope: ctx.settingsScope, useSessions: (sel) => sel(listState), t: (k) => k });
+  const rendered = comp({ close() {}, scope: ctx.configForms.form, useSessions: (sel) => sel(listState), t: (k) => k });
   assert.ok(findText(rendered, (txt) => txt === "Alpha"), "section lists the Alpha session");
   assert.ok(findText(rendered, (txt) => txt === "$1.76"), "section shows the Alpha session cost");
   assert.ok(
@@ -411,19 +411,19 @@ test("credits section lists sessions and edits settings", async () => {
   const budgetInput = findInput(rendered, (p) => p.value === 10);
   assert.ok(budgetInput, "budget input present (value 10)");
   await budgetInput.onChange({ target: { value: "20" } });
-  assert.equal(ctx.settingsScope.getSnapshot().value.budget, 20);
+  assert.equal(ctx.configForms.form.getSnapshot().value.budget, 20);
 
   const intervalInput = findInput(rendered, (p) => p.value === 60);
   assert.ok(intervalInput, "balance interval input present (value 60)");
   await intervalInput.onChange({ target: { value: "20" } });
-  assert.equal(ctx.settingsScope.getSnapshot().value.balanceIntervalSec, 20);
+  assert.equal(ctx.configForms.form.getSnapshot().value.balanceIntervalSec, 20);
   await intervalInput.onChange({ target: { value: "2" } });
-  assert.equal(ctx.settingsScope.getSnapshot().value.balanceIntervalSec, 5, "clamped to 5s from the client");
+  assert.equal(ctx.configForms.form.getSnapshot().value.balanceIntervalSec, 5, "clamped to 5s from the client");
 
   const presetSelect = findSelect(rendered, (p) => p.value === "deepseek-v4-flash");
   assert.ok(presetSelect, "preset select present (deepseek-v4-flash default)");
   await presetSelect.onChange({ target: { value: "deepseek-v4-pro" } });
-  const v = ctx.settingsScope.getSnapshot().value;
+  const v = ctx.configForms.form.getSnapshot().value;
   assert.equal(v.priceInputPeakPerM, 1.32);
   assert.equal(v.priceCacheReadPeakPerM, 0.044);
   assert.equal(v.priceOutputPeakPerM, 3.96);

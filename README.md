@@ -52,11 +52,11 @@ zero-dependency unit-test suite and a micro eval framework.
 
 | Path | Role |
 |---|---|
-| `lib/index.js` | **Host** wiring (Cordis): settings namespace, `/credit-meter/balance` HTTP route, lifecycle hooks. |
-| `lib/config.js` | Pure config domain: `resolveConfig`, `creditMeterSchema`, namespace brand, defaults. Unit-tested directly. |
+| `lib/index.js` | **Host** wiring (Cordis): `Config` schema (the settings namespace), `/credit-meter/balance` HTTP route, lifecycle hooks. |
+| `lib/config.js` | Pure config domain: `DEFAULT_CONFIG`, `creditMeterSchema`, `resolveConfig`, the `Config` schema and the settings namespace id. Unit-tested directly. |
 | `lib/handlers.js` | Pure handlers: the `createBalanceHandler` factory (DeepSeek balance fetch + cache). Unit-tested directly. |
 | `lib/client.js` | **Browser** half (web): cost math, peak/off-peak logic, real-balance polling, three UI slots, i18n dictionaries. |
-| `test/helpers.mjs` | Micro test framework: fake `ctx`, fake client services, `window.__ModuleLoader__` shim. |
+| `test/helpers.mjs` | Micro test framework: fake `ctx`, fake client services (including `configForms`), `window.__ModuleLoader__` shim. |
 | `test/*.test.mjs` | Unit tests: config domain, host wiring, balance handler, browser half. |
 | `eval/framework.mjs` + `eval/run.mjs` | Micro eval framework: behavior evals (free) + LLM evals (opt-in). |
 | `eval/cases/` | Eval cases (behavior). |
@@ -96,31 +96,41 @@ Open **Settings → Credits**:
   tokens
 - **Off-peak discount (50%)** — halve all prices outside the peak windows
 
-Preferences are saved in the host's settings document (namespace
-`credit-meter`). The `config` block of `cordis.patch.yml` pre-seeds the
-defaults for fresh installs; the persisted document always wins.
+Preferences are saved in the host's settings document, in the namespace keyed
+by this plugin's profile entry id: **`dsh-credit-meter`**. The `config` block of
+`cordis.patch.yml` pre-seeds the defaults for fresh installs; the persisted
+document always wins.
+
+The namespace is not registered by the plugin: since **DSH 0.1.7-rc.2** a
+plugin declares its preferences as a `Config` schema (exported from
+`lib/index.js`) and the harness exposes the **volatile** fields of every live
+entry as that entry's settings form. The browser half reads and writes it
+through the `configForms` service (`ctx.configForms.get("dsh-credit-meter")`);
+it no longer injects `settingsScope`. The former
+`ctx.settings.register(ns, schema)` host call does not exist any more, and a
+`Config` schema with no `.volatile()` field produces **no** settings namespace
+at all — which is what left the client half `pending (waiting for service:
+settingsScope)`.
 
 ## Compatibility
 
-Built and verified against **DSH 0.1.1-rc.2** (the channel the current harness
-runs on). Peer dependency ranges:
+Built and verified against **DSH 0.1.7-rc.2**. Peer dependency ranges:
 
 | Package | Range |
 |---|---|
-| `@deepseek-ai/cordis` | `^4.0.1` |
-| `@deepseek-ai/dsh-system-prompt` | `^0.1.1-rc.2` |
+| `@deepseek-ai/schemastery` | `~3.18.4` |
+| `@deepseek-ai/cordis` | `~4.0.4` |
 
-Client modules are injected by name (`dsh.client.inject`) and resolved from the
-web app bundle, so they need no version pin. The client half is
-dependency-free apart from the injected `@deepseek-ai/*` modules and `react`.
+`schemastery` is the one runtime dependency (`Config` is a schemastery schema);
+the rest of the plugin is dependency-free. Client modules are injected by name
+(`dsh.client.inject`) and resolved from the web app bundle, so they need no
+version pin.
 
 ## Testing
 
-Zero dependencies: Node's built-in test runner + the helpers in
-`test/helpers.mjs`.
-
 ```
-npm test          # node --test test/
+npm ci            # needed once: Config is a schemastery schema
+npm test          # node --test
 npm run check     # node --check on every JS/MJS file
 ```
 
