@@ -21,30 +21,44 @@ const reactStub = {
 };
 
 /**
- * Fake `configForms` service: `get(entryId)` returns a ConfigForm with
- * getSnapshot/subscribe/set, mirroring the settings domain's contract
- * (`ConfigFormSnapshot` carries the resolved section under `.value`).
- * `set` resolves like the real one; the returned form is exposed as `.form`
- * so tests can read or drive the section directly.
+ * Fake `configForms` service: `get(entryId)` returns a ConfigForm whose
+ * snapshot mirrors the real `ConfigFormSnapshot` (status/value/base/user/
+ * revision/writable/mode), so a test reading more than `.value` cannot pass
+ * against a shape production does not have.
+ *
+ * `get` records every requested entry id in `.requested`, so a test can assert
+ * that the client asks for the id the patch row actually composes — a drift
+ * there would otherwise leave every test green while Settings silently served
+ * defaults.
+ * @param initial - the resolved section to start from.
  */
 export function createFakeConfigForms(initial = {}) {
-  const state = { value: { ...initial } };
+  let value = { ...initial };
   const listeners = new Set();
+  const state = () => ({
+    status: "ready",
+    value,
+    base: undefined,
+    user: value,
+    revision: 1,
+    writable: true,
+    mode: "host",
+  });
   const form = {
-    getSnapshot: () => state,
+    getSnapshot: state,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    set(field, value) {
-      state.value = { ...state.value, [field]: value };
+    set(field, next) {
+      value = { ...value, [field]: next };
       for (const listener of [...listeners]) listener();
       return Promise.resolve(true);
     },
     unset(field) {
-      const next = { ...state.value };
+      const next = { ...value };
       delete next[field];
-      state.value = next;
+      value = next;
       for (const listener of [...listeners]) listener();
       return Promise.resolve(true);
     },
@@ -52,7 +66,15 @@ export function createFakeConfigForms(initial = {}) {
       return Promise.resolve(true);
     },
   };
-  return { form, get: () => form };
+  const requested = [];
+  return {
+    form,
+    requested,
+    get(entryId) {
+      requested.push(entryId);
+      return form;
+    },
+  };
 }
 
 /**

@@ -1,8 +1,14 @@
 # dsh-credit-meter bundle patch: inserts the plugin row over the composed
-# profile. The row enables the plugin and pre-seeds the defaults of the
-# "credit-meter" settings namespace (budget, currency, prices...) that the web
-# client reads and writes; values already saved in the profile's settings
-# document take precedence. Config is validated at plugin load.
+# profile. The row enables the plugin and seeds the defaults of this entry's
+# settings namespace, which the web client reads and writes; values already
+# saved in the profile's settings document take precedence. Config is validated
+# against the plugin's exported Config schema at load.
+#
+# SETTINGS NAMESPACE: since DSH 0.1.7-rc.2 the namespace is keyed by this row's
+# `id` below ("dsh-credit-meter") and is built from the volatile fields of that
+# Config schema — the plugin does not register a namespace itself. The row id is
+# therefore also the key under which preferences are persisted, and it must stay
+# in sync with SETTINGS_NS in lib/config.js (asserted by test/index.test.mjs).
 #
 # Edit this file (or the profile's own cordis.patch.yml, which outranks it) to
 # change defaults, then restart the profile process.

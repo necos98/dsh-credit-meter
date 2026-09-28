@@ -126,6 +126,17 @@ the rest of the plugin is dependency-free. Client modules are injected by name
 (`dsh.client.inject`) and resolved from the web app bundle, so they need no
 version pin.
 
+### Upgrading from 0.1.x (namespace rename)
+
+This release requires **DSH ≥ 0.1.7-rc.2** and addresses the settings namespace
+by the entry id. Older builds registered the namespace `credit-meter`; it is now
+**`dsh-credit-meter`**. The harness has no migration map for the old key, so
+**preferences saved by 0.1.x under `credit-meter` are not migrated**: budget,
+currency and prices fall back to the defaults in `cordis.patch.yml` and the
+built-in schema defaults on first start after the upgrade. Re-enter them in
+Settings → Credits (they persist from then on). Nothing else about the install
+changes — the row id stays `dsh-credit-meter`.
+
 ## Testing
 
 ```

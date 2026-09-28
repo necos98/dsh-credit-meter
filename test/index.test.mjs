@@ -1,6 +1,9 @@
 // Unit tests for the host wiring (lib/index.js) run against a fake ctx.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Config, DEFAULT_CONFIG } from "../lib/config.js";
 import { apply, name, BALANCE_PATH, SETTINGS_NS, resolveConfig } from "../lib/index.js";
 import { createFakeCtx } from "./helpers.mjs";
@@ -60,6 +63,29 @@ test("the settings namespace id is the patch entry id", () => {
   // Settings writes are addressed by the profile entry id (`entry.options.id`),
   // which is the `id` written in cordis.patch.yml.
   assert.equal(SETTINGS_NS, "dsh-credit-meter");
+});
+
+test("SETTINGS_NS matches the inserted row id in cordis.patch.yml", () => {
+  // This is the one real drift risk of the entry-keyed settings contract: the
+  // browser half asks configForms for SETTINGS_NS, while the harness publishes
+  // the namespace under the row id. If they diverge, Settings silently serves
+  // the built-in defaults forever and no other test notices.
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const patch = fs.readFileSync(
+    path.join(here, "..", "cordis.patch.yml"),
+    "utf8"
+  );
+  // Line-ending agnostic: a CRLF checkout would otherwise make `$` never match
+  // and this test would silently pass on any drift.
+  const ids = [...patch.matchAll(/^ {4}- id: ([^\s\r\n]+)/gm)].map((m) => m[1]);
+  assert.deepEqual(
+    ids,
+    [SETTINGS_NS],
+    "exactly one inserted row, and its id is the settings namespace"
+  );
+  // The module id of the browser half is the same row id, so configForms and
+  // the loader agree on one identity.
+  assert.equal(SETTINGS_NS, name);
 });
 
 test("apply tolerates an absent config block", () => {

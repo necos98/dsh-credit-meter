@@ -150,6 +150,9 @@ test("client module loads and exposes the plugin contract", () => {
 test("client registers dictionaries and the three UI slots", () => {
   const ctx = createFakeClientCtx({ settings: { enabled: true, budget: 10 } });
   client.apply(ctx);
+  // The client must ask the settings service for the entry id the patch row
+  // composes, or Settings would serve defaults forever with every test green.
+  assert.deepEqual(ctx.configForms.requested, ["dsh-credit-meter"]);
   assert.equal(ctx.dictionaries.length, 1);
   assert.ok(ctx.dictionaries[0].dict.en["footer.remaining"]);
   assert.ok(ctx.dictionaries[0].dict.it["footer.remaining"], "it dictionary present");
