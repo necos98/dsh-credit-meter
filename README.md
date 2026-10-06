@@ -38,7 +38,10 @@ zero-dependency unit-test suite and a micro eval framework.
 > names still accepted by the API; they are retired models served and billed
 > at the deepseek-flash price.
 >
-> **Peak hours**: 01:00–04:00 and 06:00–10:00 UTC, Mon–Fri. In **off-peak** the
+> **Peak hours**: 01:00–04:00 and 06:00–10:00 UTC, Mon–Fri, **excluding
+> Chinese public holidays** (holidays are off-peak in full; the bundled
+> holiday table covers 2026 and must be refreshed annually when the State
+> Council publishes the next year's schedule). In **off-peak** the
 > prices are halved and the plugin applies the discount **automatically**
 > ("Off-peak discount (50%)" toggle in the settings). A **badge** always shows
 > whether you are in `peak` (amber) or `off-peak` (green): at the bottom of the

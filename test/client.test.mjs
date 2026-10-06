@@ -232,6 +232,20 @@ test("priceFactor is 1 in peak and 0.5 in off-peak when enabled", () => {
   assert.equal(I.priceFactor(OFF_T), 1);
 });
 
+test("Chinese public holidays are off-peak in full (2026 notice)", () => {
+  I.readConfig({ status: "ready", value: { ...I.DEFAULT_CONFIG, offPeakEnabled: true }, writable: true });
+  // Thursday 2026-01-01 inside the [1,4) UTC window, but New Year holiday:
+  assert.equal(I.isPeakAt("2026-01-01T02:00:00Z"), false, "New Year holiday -> off-peak even in a peak window");
+  // UTC date is 2025-12-31 but the Beijing day is 2026-01-01 (18:00 UTC = 02:00 +1d):
+  assert.equal(I.isPeakAt("2025-12-31T18:00:00Z"), false, "boundary: Beijing day is the holiday");
+  // Monday 2026-02-16 inside the [1,4) UTC window, Spring Festival holiday:
+  assert.equal(I.isPeakAt("2026-02-16T02:00:00Z"), false, "Spring Festival holiday -> off-peak even in a peak window");
+  // Ordinary Monday, no holiday: regression guard.
+  assert.equal(I.isPeakAt("2026-03-02T02:00:00Z"), true, "ordinary Monday in a window -> peak");
+  // National Day 2026-10-01 inside the [6,10) window: off-peak when the discount is on.
+  assert.equal(I.priceFactor("2026-10-01T07:00:00Z"), 0.5, "holiday in a window -> 0.5 factor");
+});
+
 test("money and token formatters", () => {
   I.readConfig({ status: "ready", value: { ...I.DEFAULT_CONFIG, currency: "USD" }, writable: true });
   assert.equal(I.formatMoney(1.37), "$1.37");
