@@ -25,13 +25,18 @@ zero-dependency unit-test suite and a micro eval framework.
 | **Credit used per session** | ⚠️ **ESTIMATE** | DSH tracks the `tokenUsage` projection per session (REAL provider tokens: `uncachedInputTokens`, `cacheReadTokens`, `cacheWriteTokens`, `outputTokens`) — but the API does not expose per-request spend, so the cost = tokens × **configurable prices**. |
 
 > **Prices = official DeepSeek pricing** ([`quick_start/pricing`](https://api-docs.deepseek.com/quick_start/pricing/)),
-> as **PEAK** prices (USD per 1M tokens):
+> as **PEAK** prices (USD per 1M tokens). Prices verified against the official
+> page on **2026-09-06**; this table is a snapshot — the official page's prices
+> can change.
 >
 > | Model | Input (cache miss) peak | Cache read peak | Output peak |
 > | --- | --- | --- | --- |
-> | deepseek-v4-flash | 0.44 | 0.014 | 1.32 |
+> | deepseek-flash (DeepSeek-V4.1-Flash) | 0.30 | 0.006 | 1.20 |
 > | deepseek-v4-pro | 1.32 | 0.044 | 3.96 |
-> | deepseek-v4-flash-vision-exp | 0.44 | 0.014 | 1.32 |
+>
+> `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp` are legacy model
+> names still accepted by the API; they are retired models served and billed
+> at the deepseek-flash price.
 >
 > **Peak hours**: 01:00–04:00 and 06:00–10:00 UTC, Mon–Fri. In **off-peak** the
 > prices are halved and the plugin applies the discount **automatically**
@@ -90,10 +95,12 @@ Open **Settings → Credits**:
 - **Budget** — the credit you bought (0 = no budget: only the total used is shown)
 - **Currency** — ISO code (USD/EUR/…), display only
 - **Balance refresh (s)** — how often the real balance is re-fetched (5–3600)
-- **Model prices (peak)** — deepseek-v4-flash / deepseek-v4-pro /
-  deepseek-v4-flash-vision-exp presets, or **custom**: **Input /1M**,
-  **Cache read /1M**, **Cache write /1M**, **Output /1M** — prices per million
-  tokens
+- **Model prices (peak)** — deepseek-flash / deepseek-v4-pro presets, or
+  **custom**: **Input /1M**, **Cache read /1M**, **Cache write /1M**,
+  **Output /1M** — prices per million tokens. The legacy model names
+  `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp` are no longer offered
+  in the selector; they remain resolvable by `presetOf` for persisted
+  selections and are billed at the deepseek-flash price.
 - **Off-peak discount (50%)** — halve all prices outside the peak windows
 
 Preferences are saved in the host's settings document, in the namespace keyed

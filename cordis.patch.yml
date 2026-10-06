@@ -27,10 +27,10 @@
         currency: USD
         offPeakEnabled: true
         balanceIntervalSec: 60
-        priceInputPeakPerM: 0.44
-        priceCacheReadPeakPerM: 0.014
+        priceInputPeakPerM: 0.3
+        priceCacheReadPeakPerM: 0.006
         priceCacheWritePeakPerM: 0
-        priceOutputPeakPerM: 1.32
+        priceOutputPeakPerM: 1.2
 
 # To disable this row from the profile's own cordis.patch.yml, target the
 # composed id, not the namespaced runtime id:
