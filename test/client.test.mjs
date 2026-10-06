@@ -195,21 +195,21 @@ test("tokenCost uses the peak prices and the off-peak factor", () => {
   assert.equal(new Date(PEAK_T).getUTCDay(), 1, "PEAK_T is a Monday (sanity)");
   I.readConfig({ status: "ready", value: { ...I.DEFAULT_CONFIG, offPeakEnabled: true }, writable: true });
   const oneM = { uncachedInputTokens: 1e6, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
-  assert.ok(Math.abs(I.tokenCost(oneM, PEAK_T) - 0.44) < 1e-9, "1M uncached input peak = $0.44");
+  assert.ok(Math.abs(I.tokenCost(oneM, PEAK_T) - 0.3) < 1e-9, "1M uncached input peak = $0.30");
   assert.ok(
-    Math.abs(I.tokenCost({ uncachedInputTokens: 0, outputTokens: 1e6, cacheReadTokens: 0, cacheWriteTokens: 0 }, PEAK_T) - 1.32) < 1e-9,
-    "1M output peak = $1.32"
+    Math.abs(I.tokenCost({ uncachedInputTokens: 0, outputTokens: 1e6, cacheReadTokens: 0, cacheWriteTokens: 0 }, PEAK_T) - 1.2) < 1e-9,
+    "1M output peak = $1.20"
   );
   assert.ok(
-    Math.abs(I.tokenCost({ uncachedInputTokens: 0, outputTokens: 0, cacheReadTokens: 1e6, cacheWriteTokens: 0 }, PEAK_T) - 0.014) < 1e-9,
-    "1M cache read peak = $0.014"
+    Math.abs(I.tokenCost({ uncachedInputTokens: 0, outputTokens: 0, cacheReadTokens: 1e6, cacheWriteTokens: 0 }, PEAK_T) - 0.006) < 1e-9,
+    "1M cache read peak = $0.006"
   );
   assert.equal(I.tokenCost(undefined), null);
   const mixed = I.tokenCost({ uncachedInputTokens: 1e6, outputTokens: 1e6, cacheReadTokens: 1e6, cacheWriteTokens: 1e6 }, PEAK_T);
-  assert.ok(Math.abs(mixed - (0.44 + 1.32 + 0.014)) < 1e-9, "mix peak (cache write is free)");
-  assert.ok(Math.abs(I.tokenCost(oneM, OFF_T) - 0.22) < 1e-9, "1M input off-peak = $0.22 (50%)");
+  assert.ok(Math.abs(mixed - (0.3 + 1.2 + 0.006)) < 1e-9, "mix peak (cache write is free) = $1.506");
+  assert.ok(Math.abs(I.tokenCost(oneM, OFF_T) - 0.15) < 1e-9, "1M input off-peak = $0.15 (50%)");
   assert.ok(
-    Math.abs(I.tokenCostWithFactor(oneM, 0.5) - 0.22) < 1e-9,
+    Math.abs(I.tokenCostWithFactor(oneM, 0.5) - 0.15) < 1e-9,
     "tokenCostWithFactor 0.5 = half (explicit)"
   );
 });
@@ -247,7 +247,10 @@ test("money and token formatters", () => {
 });
 
 test("model price presets are recognized", () => {
-  assert.equal(I.presetOf({ priceInputPerM: 0.44, priceCacheReadPerM: 0.014, priceCacheWritePerM: 0, priceOutputPerM: 1.32 }), "deepseek-v4-flash");
+  // Current model names resolve to their own keys; identical numbers must
+  // resolve to the current name (deepseek-flash is listed before the legacy
+  // keys in MODEL_PRESETS).
+  assert.equal(I.presetOf({ priceInputPerM: 0.3, priceCacheReadPerM: 0.006, priceCacheWritePerM: 0, priceOutputPerM: 1.2 }), "deepseek-flash");
   assert.equal(I.presetOf({ priceInputPerM: 1.32, priceCacheReadPerM: 0.044, priceCacheWritePerM: 0, priceOutputPerM: 3.96 }), "deepseek-v4-pro");
   assert.equal(I.presetOf({ priceInputPerM: 0.3, priceCacheReadPerM: 0.1, priceCacheWritePerM: 0, priceOutputPerM: 2 }), "custom");
 });
@@ -264,12 +267,12 @@ test("realBalanceOf extracts the usable balance", () => {
 });
 
 test("totalsFromList and rowsFromList aggregate session usage", () => {
-  // s1 = 1M in (0.44) + 1M out (1.32) = 1.76; s3 = 1M out = 1.32 -> 3.08
+  // s1 = 1M in (0.30) + 1M out (1.20) = 1.50; s3 = 1M out = 1.20 -> 2.70
   const totals = I.totalsFromList(listState);
-  assert.ok(Math.abs(totals.used - (1.76 + 1.32)) < 1e-9);
+  assert.ok(Math.abs(totals.used - (1.5 + 1.2)) < 1e-9);
   assert.equal(totals.withUsage, 2);
-  assert.ok(Math.abs(I.totalsFromListFactor(listState, 1).used - 3.08) < 1e-9);
-  assert.ok(Math.abs(I.totalsFromListFactor(listState, 0.5).used - 1.54) < 1e-9);
+  assert.ok(Math.abs(I.totalsFromListFactor(listState, 1).used - 2.7) < 1e-9);
+  assert.ok(Math.abs(I.totalsFromListFactor(listState, 0.5).used - 1.35) < 1e-9);
   const rows = I.rowsFromList(listState);
   assert.equal(rows.length, 3);
   assert.equal(rows[0].id, "s1");
@@ -280,8 +283,8 @@ test("totalsFromList and rowsFromList aggregate session usage", () => {
 test("legacy v0.1 price keys in the settings document are ignored", () => {
   I.readConfig({ status: "ready", value: { priceInputPerM: 0.27, priceCacheReadPerM: 0.07, priceOutputPerM: 1.1 }, writable: true });
   const oneM = { uncachedInputTokens: 1e6, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
-  assert.equal(I.tokenCostWithFactor(oneM, 1), 0.44);
-  assert.equal(I.tokenCostWithFactor({ uncachedInputTokens: 0, outputTokens: 0, cacheReadTokens: 1e6, cacheWriteTokens: 0 }, 1), 0.014);
+  assert.equal(I.tokenCostWithFactor(oneM, 1), 0.3);
+  assert.equal(I.tokenCostWithFactor({ uncachedInputTokens: 0, outputTokens: 0, cacheReadTokens: 1e6, cacheWriteTokens: 0 }, 1), 0.006);
 });
 
 // -- balance store
@@ -355,12 +358,12 @@ test("footer renders the remaining credit estimate and the real balance", () => 
   client.apply(ctx);
   const comp = slotComponent(ctx, "sidebar.footer.action");
   const props = { scope: ctx.configForms.form, useSessions: (sel) => sel(listState), t: (k) => k };
-  // no real balance (ok:false) -> estimate: budget 10 - used 3.08 = $6.92
+  // no real balance (ok:false) -> estimate: budget 10 - used 2.70 = $7.30
   const wide = comp({ wide: true, ...props });
-  assert.ok(findText(wide, (txt) => txt === "$6.92"), "wide shows the estimate remaining");
+  assert.ok(findText(wide, (txt) => txt === "$7.30"), "wide shows the estimate remaining");
   const rail = comp({ wide: false, ...props });
   assert.notEqual(rail, null);
-  assert.ok(findText(rail, (txt) => txt === "$6.9"), "rail shows the compact amount");
+  assert.ok(findText(rail, (txt) => txt === "$7.3"), "rail shows the compact amount");
   // real balance available -> $42.50 with the "real balance" label
   I.balanceStore.state = {
     status: "ok",
@@ -389,7 +392,7 @@ test("session header badge shows the estimated session cost", () => {
     scope: ctx.configForms.form,
     t: (k) => k,
   });
-  assert.ok(findText(rendered, (txt) => txt === "$1.76"), "badge shows the session cost");
+  assert.ok(findText(rendered, (txt) => txt === "$1.50"), "badge shows the session cost");
   assert.equal(
     comp({ sessionId: "s1", useProjection: () => undefined, scope: ctx.configForms.form, t: (k) => k }),
     null,
@@ -405,9 +408,9 @@ test("credits section lists sessions and edits settings", async () => {
   const comp = slotComponent(ctx, "settings.section");
   const rendered = comp({ close() {}, scope: ctx.configForms.form, useSessions: (sel) => sel(listState), t: (k) => k });
   assert.ok(findText(rendered, (txt) => txt === "Alpha"), "section lists the Alpha session");
-  assert.ok(findText(rendered, (txt) => txt === "$1.76"), "section shows the Alpha session cost");
+  assert.ok(findText(rendered, (txt) => txt === "$1.50"), "section shows the Alpha session cost");
   assert.ok(
-    findText(rendered, (txt) => txt.includes("section.range") && txt.includes("$3.08")),
+    findText(rendered, (txt) => txt.includes("section.range") && txt.includes("$2.70")),
     "section shows the off-peak -> peak range"
   );
 
@@ -423,8 +426,8 @@ test("credits section lists sessions and edits settings", async () => {
   await intervalInput.onChange({ target: { value: "2" } });
   assert.equal(ctx.configForms.form.getSnapshot().value.balanceIntervalSec, 5, "clamped to 5s from the client");
 
-  const presetSelect = findSelect(rendered, (p) => p.value === "deepseek-v4-flash");
-  assert.ok(presetSelect, "preset select present (deepseek-v4-flash default)");
+  const presetSelect = findSelect(rendered, (p) => p.value === "deepseek-flash");
+  assert.ok(presetSelect, "preset select present (deepseek-flash default)");
   await presetSelect.onChange({ target: { value: "deepseek-v4-pro" } });
   const v = ctx.configForms.form.getSnapshot().value;
   assert.equal(v.priceInputPeakPerM, 1.32);

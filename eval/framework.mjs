@@ -18,9 +18,10 @@ import { pathToFileURL } from "node:url";
 import { apply } from "../lib/index.js";
 import { createFakeCtx } from "../test/helpers.mjs";
 
-// Rough peak prices (USD per 1M tokens) used to estimate LLM eval cost.
-const PRICE_INPUT_PER_M = 0.44;
-const PRICE_OUTPUT_PER_M = 1.32;
+// Rough peak prices (USD per 1M tokens, deepseek-flash) used to estimate LLM
+// eval cost; rough estimates, refreshed with the official pricing page.
+const PRICE_INPUT_PER_M = 0.3;
+const PRICE_OUTPUT_PER_M = 1.2;
 
 /** Build the harness handed to behavior cases. */
 export function behaviorHarness() {
